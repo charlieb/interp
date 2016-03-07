@@ -54,6 +54,47 @@ def interp(prog):
         return val(prog)
 
 
+def get(name, env):
+   rev_env = env
+   rev_env.reverse()
+   for frame in rev_env:
+      if name in frame:
+         return frame[name]
+   err("binding for %s not found"%name)
+
+def set(name, value, env):
+   for frame in env[::-1]: # reverse order
+      if name in frame:
+         frame[name] = value
+         return
+   # introduce a new binding
+   env[-1][name] = value
+
+def interp_let(prog, env):
+    print_bindings()
+    print prog
+    if isinstance(prog, list):
+        if prog[0] == 'if':
+            if interp(prog[1]):
+                return interp(prog[2])
+            else:
+                return interp(prog[3])
+        elif prog[0] == 'bind':
+            var(prog[1], interp(prog[2]))
+        elif prog[0] == 'progn':
+            progn = [interp(x) for x in prog[1:]]
+            return progn[-1]
+        elif prog[0] == 'lambda':
+            return lambda : interp(prog[1])
+        else:
+            prog2 = [interp(x) for x in prog]
+            return apply(prog2[0], prog2[1:])
+
+    elif isinstance(prog, int):
+        return prog
+    else:
+        return val(prog)
+
 # (3) - not interesting
 def parse(prog):
     name = ''
