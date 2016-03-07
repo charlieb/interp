@@ -5,16 +5,27 @@ _bindings_ = {}
 def err(message):
     print "ERROR:", message
 def var(name, value):
+    global _bindings_
     _bindings_[name] = value
 def val(name):
+    global _bindings_
     if name not in _bindings_:
         err("%s not bound"%name)
     else:
         return _bindings_[name]
+def reset():
+    global _bindings_
+    _bindings_ = {}
+def print_bindings():
+    global _bindings_
+    print [(k, "func" if callable(v) else v) for k,v in _bindings_.iteritems()]
+
 # (1) - END
 
 # (2) - interpret the list
 def interp(prog):
+    print_bindings()
+    print prog
     if isinstance(prog, list):
         # (3) - special form
         if prog[0] == 'if':
@@ -29,8 +40,10 @@ def interp(prog):
         elif prog[0] == 'progn':
             progn = [interp(x) for x in prog[1:]]
             return progn[-1]
+        # (6) - lambda
+        elif prog[0] == 'lambda':
+            return lambda : interp(prog[1])
         else:
-        # (3) - END
         # (2)
             prog2 = [interp(x) for x in prog]
             return apply(prog2[0], prog2[1:])
@@ -80,12 +93,21 @@ def test():
     # (4)
     print '-----4-----'
     print interp(parse('(bind b 10) (add 2 (if b (add a a) 5))'))
-    _bindings_ = {} # reset bindings
+    reset()
+    var("add", lambda x,y: x+y)
     print interp(parse('(bind a 1) (bind b (if a 0 2)) (add 2 (add a b))'))
     # it's returning none! --> progn
     # (5) 
+    print '-----5-----'
+    reset()
+    var("add", lambda x,y: x+y)
     print interp(parse('(progn (bind a 1) (bind b (if a 0 2)) (add 2 (add a b)))'))
     # (6)
+    print '-----6-----'
+    reset()
+    var("add", lambda x,y: x+y)
+    print interp(parse('(progn (bind fn (lambda (add a b))) (bind a 1) (bind b (if a 0 2)) (add 2 (fn)))'))
+
 
 if __name__ == "__main__":
     test()
