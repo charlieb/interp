@@ -54,15 +54,13 @@ def interp(prog):
         return val(prog)
 
 
-def get(name, env):
-   rev_env = env
-   rev_env.reverse()
-   for frame in rev_env:
+def getv(name, env):
+   for frame in env[::-1]:
       if name in frame:
          return frame[name]
    err("binding for %s not found"%name)
 
-def set(name, value, env):
+def setv(name, value, env):
    for frame in env[::-1]: # reverse order
       if name in frame:
          frame[name] = value
@@ -71,29 +69,31 @@ def set(name, value, env):
    env[-1][name] = value
 
 def interp_let(prog, env):
-    print_bindings()
+    print env
     print prog
     if isinstance(prog, list):
         if prog[0] == 'if':
-            if interp(prog[1]):
-                return interp(prog[2])
+            if interp_let(prog[1], env):
+                return interp_let(prog[2], env)
             else:
-                return interp(prog[3])
-        elif prog[0] == 'bind':
-            var(prog[1], interp(prog[2]))
+                return interp_let(prog[3], env)
+        elif prog[0] == 'let':
+            print 'let', prog[1]
+            new_scope_bindings = dict([(x[0], interp_let(x[1], env)) for x in prog[1]])
+            return interp_let(prog[2], env + [new_scope_bindings])
         elif prog[0] == 'progn':
-            progn = [interp(x) for x in prog[1:]]
+            progn = [interp_let(x, env) for x in prog[1:]]
             return progn[-1]
         elif prog[0] == 'lambda':
-            return lambda : interp(prog[1])
+            return lambda (new_env): interp_let(prog[1], env + new_env)
         else:
-            prog2 = [interp(x) for x in prog]
-            return apply(prog2[0], prog2[1:])
+            prog2 = [interp_let(x, env) for x in prog]
+            return apply(prog2[0], [env] + prog2[1:])
 
     elif isinstance(prog, int):
         return prog
     else:
-        return val(prog)
+        return getv(prog, env)
 
 # (3) - not interesting
 def parse(prog):
@@ -111,7 +111,7 @@ def parse(prog):
            stack.append([])
         elif c == ')':
            stack[-2].append(stack.pop())
-        elif c != ' ':
+        elif c not in ' \n':
            name += c
 
     return stack[0][0]
@@ -148,7 +148,11 @@ def test():
     reset()
     var("add", lambda x,y: x+y)
     print interp(parse('(progn (bind fn (lambda (add a b))) (bind a 1) (bind b (if a 0 2)) (add 2 (fn)))'))
-
+    print '-----7-----'
+    reset()
+    var("add", lambda env,x,y: x+y)
+    with open("test7.lisp", "r") as f:
+       print interp_let(parse(f.read()), [_bindings_])
 
 if __name__ == "__main__":
     test()
