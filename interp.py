@@ -53,7 +53,9 @@ def interp(prog):
     else:
         return val(prog)
 
-
+# (7) - we can now create functions but we still can't create functions that
+# actually take arguments.
+# We must introduce scope and variable binding within a scope
 def getv(name, env):
    for frame in env[::-1]:
       if name in frame:
@@ -68,6 +70,8 @@ def setv(name, value, env):
    # introduce a new binding
    env[-1][name] = value
 
+# Adding let means that we now have the concept of scope in our language
+# Before we only had global scope now we have a new scope created in out let.
 def interp_let(prog, env):
     print env
     print prog
@@ -77,15 +81,20 @@ def interp_let(prog, env):
                 return interp_let(prog[2], env)
             else:
                 return interp_let(prog[3], env)
-        elif prog[0] == 'let':
+        elif prog[0] == 'let': # fundamental decision - moving from a bind statement to a let
+            # compound means that we no longer have any way to set a variable
+            # once it's created - we've created a functional language
             print 'let', prog[1]
             new_scope_bindings = dict([(x[0], interp_let(x[1], env)) for x in prog[1]])
             return interp_let(prog[2], env + [new_scope_bindings])
-        elif prog[0] == 'progn':
+        elif prog[0] == 'progn': # now progn is obsolete because we've removed the only operation with a side effect
             progn = [interp_let(x, env) for x in prog[1:]]
             return progn[-1]
+        elif prog[0] == 'sub':
+            return lambda new_env: interp_let(prog[1], env + new_env)
+        # (8) - lambda with arguments - NB this is actually a macro!
         elif prog[0] == 'lambda':
-            return lambda (new_env): interp_let(prog[1], env + new_env)
+            return lambda new_env, *args: interp_let(['let', zip(prog[1], args), prog[2]], new_env)
         else:
             prog2 = [interp_let(x, env) for x in prog]
             return apply(prog2[0], [env] + prog2[1:])
@@ -152,6 +161,11 @@ def test():
     reset()
     var("add", lambda env,x,y: x+y)
     with open("test7.lisp", "r") as f:
+       print interp_let(parse(f.read()), [_bindings_])
+    print '-----8-----'
+    reset()
+    var("add", lambda env,x,y: x+y)
+    with open("test8.lisp", "r") as f:
        print interp_let(parse(f.read()), [_bindings_])
 
 if __name__ == "__main__":
