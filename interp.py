@@ -92,11 +92,21 @@ def interp_let(prog, env):
             return progn[-1]
         elif prog[0] == 'sub':
             return lambda new_env: interp_let(prog[1], env + new_env)
-        # (8) - lambda with arguments - NB this is actually a macro!
+        # (8) - lambda with arguments
         elif prog[0] == 'lambda':
-            return lambda new_env, *args: interp_let(['let', zip(prog[1], args), prog[2]], new_env)
+            return lambda new_env, *args: interp_let(prog[2], new_env + [dict(zip(prog[1], args))])
+        # (9) - lists
+        elif prog[0] == 'fst':
+            return interp_let(prog[1], env)[0]
+        elif prog[0] == 'rst':
+            return interp_let(prog[1], env)[1:]
+        elif prog[0] == 'lst':
+            return [interp_let(x, env) for x in prog[1:]]
+        elif prog[0] == 'nil?':
+            return interp_let(prog[1], env) == []
         else:
             prog2 = [interp_let(x, env) for x in prog]
+            print "apply", prog2
             return apply(prog2[0], [env] + prog2[1:])
 
     elif isinstance(prog, int):
@@ -167,6 +177,10 @@ def test():
     var("add", lambda env,x,y: x+y)
     with open("test8.lisp", "r") as f:
        print interp_let(parse(f.read()), [_bindings_])
-
+    print '-----9-----'
+    reset()
+    var("add", lambda env,x,y: x+y)
+    with open("test9.lisp", "r") as f:
+       print interp_let(parse(f.read()), [_bindings_])
 if __name__ == "__main__":
     test()
