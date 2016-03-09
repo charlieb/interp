@@ -136,6 +136,16 @@ def parse(prog):
     return stack[0][0]
 # (3) - END
 
+def repl():
+   line = ''
+   while True:
+      line += raw_input('repl> ' if line == '' else '   > ')
+      if line.count('(') == line.count(')'):
+         print interp_let(parse(line), [])
+         line = ''
+
+
+
 def test():
     # (1)
     print '-----1-----'
