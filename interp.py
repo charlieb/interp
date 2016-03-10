@@ -1,3 +1,4 @@
+import sys
 
 # (1) create a mechanism for binding variables
 _bindings_ = {}
@@ -130,6 +131,8 @@ def parse(prog):
         elif c not in ' \n':
            name += c
 
+    print prog
+    print stack
     return stack[0][0]
 # (3) - END
 
@@ -203,6 +206,10 @@ def test():
        print interp_let(parse(f.read()), initial_bindings())
     print '-----10----'
     with open("test10.lisp", "r") as f:
-       print interp_let(parse(f.read()), initial_bindings())
+       print interp_let(parse('(progn ' + f.read() + ')'), initial_bindings())
+
 if __name__ == "__main__":
-    test()
+    if len(sys.argv) > 1 and sys.argv[1] == '-i':
+         repl()
+    else:     
+        test()

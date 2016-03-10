@@ -1,5 +1,3 @@
-(progn 
-
 (define (quote true) 1)
 (define (quote false) 0)
 
@@ -17,4 +15,3 @@
 
 (fib 5)
 
-)
