@@ -70,11 +70,15 @@ def setv(name, value, env):
    # introduce a new binding
    env[-1][name] = value
 
+def print_env(env):
+    for frame in env:
+        print [(k, "func" if callable(v) else v) for k,v in frame.iteritems()]
+
 # Adding let means that we now have the concept of scope in our language
 # Before we only had global scope now we have a new scope created in out let.
 def interp_let(prog, env):
-    print env
-    print prog
+    print_env(env)
+    print '>', prog
     if isinstance(prog, list):
         if prog[0] == 'if':
             if interp_let(prog[1], env):
@@ -84,7 +88,6 @@ def interp_let(prog, env):
         elif prog[0] == 'let': # fundamental decision - moving from a bind statement to a let
             # compound means that we no longer have any way to set a variable
             # once it's created - we've created a functional language
-            print 'let', prog[1]
             new_scope_bindings = dict([(x[0], interp_let(x[1], env)) for x in prog[1]])
             return interp_let(prog[2], env + [new_scope_bindings])
         elif prog[0] == 'progn': # now progn is obsolete because we've removed the only operation with a side effect
@@ -95,18 +98,12 @@ def interp_let(prog, env):
         # (8) - lambda with arguments
         elif prog[0] == 'lambda':
             return lambda new_env, *args: interp_let(prog[2], new_env + [dict(zip(prog[1], args))])
-        # (9) - lists
-        elif prog[0] == 'fst':
-            return interp_let(prog[1], env)[0]
-        elif prog[0] == 'rst':
-            return interp_let(prog[1], env)[1:]
-        elif prog[0] == 'lst':
-            return [interp_let(x, env) for x in prog[1:]]
-        elif prog[0] == 'nil?':
-            return interp_let(prog[1], env) == []
+        # (10) - quote - don't evaluate
+        elif prog[0] == 'quote':
+            return prog[1] 
         else:
             prog2 = [interp_let(x, env) for x in prog]
-            print "apply", prog2
+            print ">>", prog[0], ', '.join([str(x) for x in prog2[1:]])
             return apply(prog2[0], [env] + prog2[1:])
 
     elif isinstance(prog, int):
@@ -141,10 +138,24 @@ def repl():
    while True:
       line += raw_input('repl> ' if line == '' else '   > ')
       if line.count('(') == line.count(')'):
-         print interp_let(parse(line), [])
+         print interp_let(parse(line), initial_bindings())
          line = ''
 
 
+def define(env, name, value):
+    env[0][name] = value
+
+def initial_bindings():
+    return [{'add': lambda env,x,y: x+y,
+            'eq': lambda env,x,y: x == y,
+            'fst': lambda env,lst: lst[0],
+            'rst': lambda env,lst: lst[1:],
+            'lst': lambda env,*args: list(args),
+            'nil?': lambda env,lst: lst == [],
+
+            # (10) - also needs quote
+            'define': define,
+            }]
 
 def test():
     # (1)
@@ -188,9 +199,10 @@ def test():
     with open("test8.lisp", "r") as f:
        print interp_let(parse(f.read()), [_bindings_])
     print '-----9-----'
-    reset()
-    var("add", lambda env,x,y: x+y)
     with open("test9.lisp", "r") as f:
-       print interp_let(parse(f.read()), [_bindings_])
+       print interp_let(parse(f.read()), initial_bindings())
+    print '-----10----'
+    with open("test10.lisp", "r") as f:
+       print interp_let(parse(f.read()), initial_bindings())
 if __name__ == "__main__":
     test()
