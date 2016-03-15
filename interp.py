@@ -78,8 +78,9 @@ def print_env(env):
 # Adding let means that we now have the concept of scope in our language
 # Before we only had global scope now we have a new scope created in out let.
 def interp_let(prog, env):
-    print_env(env)
-    print '>', prog
+    if env[0]['*DEBUG*']:
+        print_env(env)
+        print '>', prog
     if isinstance(prog, list):
         if prog[0] == 'if':
             if interp_let(prog[1], env):
@@ -104,7 +105,8 @@ def interp_let(prog, env):
             return prog[1] 
         else:
             prog2 = [interp_let(x, env) for x in prog]
-            print ">>", prog[0], ', '.join([str(x) for x in prog2[1:]])
+            if env[0]['*DEBUG*']:
+                print ">>", prog[0], ', '.join([str(x) for x in prog2[1:]])
             return apply(prog2[0], [env] + prog2[1:])
 
     elif isinstance(prog, int):
@@ -182,6 +184,10 @@ def initial_bindings():
 
             # (10) - also needs quote
             'define': define,
+
+            '*DEBUG*' : False,
+            'DEBUG-ON' : lambda env: define(env, '*DEBUG*', True),
+            'DEBUG-OFF' : lambda env: define(env, '*DEBUG*', False)
             }]
 
 def test():
@@ -217,14 +223,13 @@ def test():
     print interp(parse('(progn (bind fn (lambda (add a b))) (bind a 1) (bind b (if a 0 2)) (add 2 (fn)))'))
     print '-----7-----'
     reset()
-    var("add", lambda env,x,y: x+y)
     with open("test7.lisp", "r") as f:
-       print interp_let(parse(f.read()), [_bindings_])
+       print interp_let(parse(f.read()), initial_bindings())
     print '-----8-----'
     reset()
     var("add", lambda env,x,y: x+y)
     with open("test8.lisp", "r") as f:
-       print interp_let(parse(f.read()), [_bindings_])
+       print interp_let(parse(f.read()), initial_bindings())
     print '-----9-----'
     with open("test9.lisp", "r") as f:
        print interp_let(parse(f.read()), initial_bindings())
