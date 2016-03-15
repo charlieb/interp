@@ -112,6 +112,29 @@ def interp_let(prog, env):
     else:
         return getv(prog, env)
 
+def expand(prog):
+    quote_next = False
+    collect = []
+    print 'p', prog
+    if not isinstance(prog, list): return prog
+
+    for sym in prog:
+        print 's', sym
+        if isinstance(sym, list):
+            expanded = expand(sym)
+            collect.append(['quote', expanded] if quote_next else expanded)
+            quote_next = False
+        elif isinstance(sym, str) and sym.startswith('\''): # quote or quoted symbol
+            if sym == '\'': # freestanding ' e.g. '(some list of syms)
+                quote_next = True
+            else:
+                collect.append(['quote', sym[1:]])
+        else: # unquoted symbol or any other non-list (i.e. integer)
+            collect.append(sym)
+
+        print collect
+    return collect
+                            
 # (3) - not interesting
 def parse(prog):
     name = ''
@@ -133,7 +156,8 @@ def parse(prog):
 
     print prog
     print stack
-    return stack[0][0]
+    return ['progn'] + stack[0]
+
 # (3) - END
 
 def repl():
@@ -206,7 +230,11 @@ def test():
        print interp_let(parse(f.read()), initial_bindings())
     print '-----10----'
     with open("test10.lisp", "r") as f:
-       print interp_let(parse('(progn ' + f.read() + ')'), initial_bindings())
+       print interp_let(parse(f.read()), initial_bindings())
+    print '-----11----'
+    # Add quote as a reader macro
+    with open("test11.lisp", "r") as f:
+       print interp_let(expand(parse(f.read())), initial_bindings())
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == '-i':
