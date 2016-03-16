@@ -91,7 +91,10 @@ def interp_let(prog, env):
             # compound means that we no longer have any way to set a variable
             # once it's created - we've created a functional language
             new_scope_bindings = dict([(x[0], interp_let(x[1], env)) for x in prog[1]])
-            return interp_let(prog[2], env + [new_scope_bindings])
+            #return interp_let(prog[2], env + [new_scope_bindings])
+            # make let's body an implicit progn
+            progn = [interp_let(x, env + [new_scope_bindings]) for x in prog[2:]]
+            return progn[-1]
         elif prog[0] == 'progn': # now progn is obsolete because we've removed the only operation with a side effect
             progn = [interp_let(x, env) for x in prog[1:]]
             return progn[-1]
@@ -99,7 +102,11 @@ def interp_let(prog, env):
             return lambda new_env: interp_let(prog[1], env + new_env)
         # (8) - lambda with arguments
         elif prog[0] == 'lambda':
-            return lambda new_env, *args: interp_let(prog[2], new_env + [dict(zip(prog[1], args))])
+            #return lambda new_env, *args: interp_let(prog[2], new_env + [dict(zip(prog[1], args))])
+            # (12) - closures also better scope
+            # this will break all the lambdas that were bound with let but are
+            # recursive which is entirely correct
+            return lambda _, *args: interp_let(prog[2], env + [dict(zip(prog[1], args))])
         # (10) - quote - don't evaluate
         elif prog[0] == 'quote':
             return prog[1] 
@@ -117,11 +124,11 @@ def interp_let(prog, env):
 def expand(prog):
     quote_next = False
     collect = []
-    print 'p', prog
+    #print 'p', prog
     if not isinstance(prog, list): return prog
 
     for sym in prog:
-        print 's', sym
+        #print 's', sym
         if isinstance(sym, list):
             expanded = expand(sym)
             collect.append(['quote', expanded] if quote_next else expanded)
@@ -134,7 +141,7 @@ def expand(prog):
         else: # unquoted symbol or any other non-list (i.e. integer)
             collect.append(sym)
 
-        print collect
+        #print collect
     return collect
                             
 # (3) - not interesting
@@ -175,20 +182,21 @@ def define(env, name, value):
     env[0][name] = value
 
 def initial_bindings():
-    return [{'add': lambda env,x,y: x+y,
-            'eq': lambda env,x,y: x == y,
-            'fst': lambda env,lst: lst[0],
-            'rst': lambda env,lst: lst[1:],
-            'lst': lambda env,*args: list(args),
-            'nil?': lambda env,lst: lst == [],
+    return [{
+        'add': lambda env,x,y: x+y,
+        'eq': lambda env,x,y: x == y,
+        'fst': lambda env,lst: lst[0],
+        'rst': lambda env,lst: lst[1:],
+        'lst': lambda env,*args: list(args),
+        'nil?': lambda env,lst: lst == [],
 
-            # (10) - also needs quote
-            'define': define,
+        # (10) - also needs quote
+        'define': define,
 
-            '*DEBUG*' : False,
-            'DEBUG-ON' : lambda env: define(env, '*DEBUG*', True),
-            'DEBUG-OFF' : lambda env: define(env, '*DEBUG*', False)
-            }]
+        '*DEBUG*' : False,
+        'DEBUG-ON' : lambda env: define(env, '*DEBUG*', True),
+        'DEBUG-OFF' : lambda env: define(env, '*DEBUG*', False)
+        }]
 
 def test():
     # (1)
@@ -230,15 +238,23 @@ def test():
     var("add", lambda env,x,y: x+y)
     with open("test8.lisp", "r") as f:
        print interp_let(parse(f.read()), initial_bindings())
-    print '-----9-----'
-    with open("test9.lisp", "r") as f:
-       print interp_let(parse(f.read()), initial_bindings())
-    print '-----10----'
+    #print '-----9-----' # recursive let demo - doesn't work with closure enabled lambda
+    #with open("test9.lisp", "r") as f:
+    #   print interp_let(parse(f.read()), initial_bindings())
+    print '-----10----' # define
     with open("test10.lisp", "r") as f:
        print interp_let(parse(f.read()), initial_bindings())
     print '-----11----'
     # Add quote as a reader macro
     with open("test11.lisp", "r") as f:
+       print interp_let(expand(parse(f.read())), initial_bindings())
+    print '-----12----'
+    # Closures
+    with open("test12.lisp", "r") as f:
+       print interp_let(expand(parse(f.read())), initial_bindings())
+    print '-----13----'
+    # let with implicit progn
+    with open("test13.lisp", "r") as f:
        print interp_let(expand(parse(f.read())), initial_bindings())
 
 if __name__ == "__main__":
