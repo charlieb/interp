@@ -164,7 +164,7 @@ def parse(prog):
            name += c
 
     print prog
-    print stack
+    print stack[0]
     return ['progn'] + stack[0]
 
 # (3) - END
@@ -256,6 +256,11 @@ def test():
     # let with implicit progn
     with open("test13.lisp", "r") as f:
        print interp_let(expand(parse(f.read())), initial_bindings())
+    print '-----14----'
+    # let with implicit progn
+    with open("test14.lisp", "r") as f:
+       print interp_let(expand(parse(f.read())), initial_bindings())
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == '-i':
