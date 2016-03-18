@@ -1,4 +1,4 @@
-(define 'cond 
+(define 'cond-fn
   (lambda (body)
     (if (nil? body)
       (lst)
@@ -6,6 +6,11 @@
             (rest (rst body)))
         (let ((condition (fst first))
               (expression (fst (rst first))))
-          (lst 'if condition expression (cond rest)))))))
+          (lst 'if condition expression (cond-fn rest)))))))
 
-(cond '((0 (list 10)) (1 20)))
+(defmacro 'cond 
+  (lambda (body)
+    (cond-fn body)))
+
+(DEBUG-ON)
+(cond ((0 (list 10)) (1 20)))

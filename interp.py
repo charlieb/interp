@@ -110,7 +110,14 @@ def interp_let(prog, env):
         # (10) - quote - don't evaluate
         elif prog[0] == 'quote':
             return prog[1] 
-        else:
+        elif prog[0] in env[0]['*MACROS*']:
+            # if it's a macro it needs an extra round of function calling
+            prog2 = apply(getv(prog[0], env), [env] + prog[1:])
+            if env[0]['*DEBUG*']:
+                print "macro> ", prog
+                print "expand>", prog2
+            return interp_let(prog2, env)
+        else: # function call
             prog2 = [interp_let(x, env) for x in prog]
             if env[0]['*DEBUG*']:
                 print ">>", prog[0], ', '.join([str(x) for x in prog2[1:]])
@@ -181,6 +188,10 @@ def repl():
 def define(env, name, value):
     env[0][name] = value
 
+def defmacro(env, name, value):
+    define(env, name, value)
+    env[0]['*MACROS*'].append(name)
+
 def initial_bindings():
     return [{
         'add': lambda env,x,y: x+y,
@@ -195,7 +206,12 @@ def initial_bindings():
 
         '*DEBUG*' : False,
         'DEBUG-ON' : lambda env: define(env, '*DEBUG*', True),
-        'DEBUG-OFF' : lambda env: define(env, '*DEBUG*', False)
+        'DEBUG-OFF' : lambda env: define(env, '*DEBUG*', False),
+
+        # (14)
+        '*MACROS*' : [],
+        'defmacro' : defmacro,
+
         }]
 
 def test():
@@ -257,7 +273,6 @@ def test():
     with open("test13.lisp", "r") as f:
        print interp_let(expand(parse(f.read())), initial_bindings())
     print '-----14----'
-    # let with implicit progn
     with open("test14.lisp", "r") as f:
        print interp_let(expand(parse(f.read())), initial_bindings())
 
